@@ -31,8 +31,6 @@ class HealthConnectModule internal constructor(context: ReactApplicationContext)
   }
 
   @ReactMethod
-  override fun isAvailable(providerPackageNames: ReadableArray, promise: Promise) {
-    return manager.isAvailable(providerPackageNames, promise)
   override fun getSdkStatus(providerPackageName: String, promise: Promise) {
     return manager.getSdkStatus(providerPackageName, promise)
   }
