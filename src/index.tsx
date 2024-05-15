@@ -77,6 +77,15 @@ export function openHealthConnectSettings(): void {
 }
 
 /**
+ * Opens Health Connect data management screen
+ */
+export function openHealthConnectDataManagement(
+  providerPackageName?: string
+): void {
+  return HealthConnect.openHealthConnectDataManagement(providerPackageName);
+}
+
+/**
  * Request permissions to access Health Connect data
  * @param permissions list of permissions to request
  * @returns granted permissions
@@ -84,11 +93,11 @@ export function openHealthConnectSettings(): void {
 export function requestPermission(
   permissions: Permission[],
   providerPackageName = DEFAULT_PROVIDER_PACKAGE_NAME
-): Promise<Permission> {
+): Promise<Permission[]> {
   return HealthConnect.requestPermission(permissions, providerPackageName);
 }
 
-export function getGrantedPermissions(): Promise<Permission> {
+export function getGrantedPermissions(): Promise<Permission[]> {
   return HealthConnect.getGrantedPermissions();
 }
 
@@ -101,6 +110,13 @@ export function readRecords<T extends RecordType>(
   options: ReadRecordsOptions
 ): Promise<RecordResult<T>[]> {
   return HealthConnect.readRecords(recordType, options);
+}
+
+export function readRecord<T extends RecordType>(
+  recordType: T,
+  recordId: string
+): Promise<RecordResult<T>> {
+  return HealthConnect.readRecord(recordType, recordId);
 }
 
 export function insertRecords(

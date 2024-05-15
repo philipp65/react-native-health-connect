@@ -4,8 +4,8 @@
     <h1>React Native Health Connect</h1>
   </div>
   <div align="center">
-    <a href="https://www.npmjs.com/package/react-native-health-connect/v/alpha">
-      <img src="https://img.shields.io/npm/v/react-native-health-connect/alpha.svg?style=for-the-badge&color=4284F3" />
+    <a href="https://www.npmjs.com/package/react-native-health-connect">
+      <img src="https://img.shields.io/npm/v/react-native-health-connect.svg?style=for-the-badge&color=4284F3" />
     </a>
     <a href="https://opensource.org/licenses/MIT">
       <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" />
@@ -19,21 +19,111 @@ This library is a wrapper around Health Connect for react native. Health Connect
 
 ## Requirements
 
-- [Health Connect](https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata&hl=en&gl=US) needs to be installed on the user's device, However the goal is to have this app preinstalled on Android devices in the future.
-- Health Connect API requires `mindSdkVersion=26` (Android Oreo / 8.0).
+- [Health Connect](https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata&hl=en&gl=US) needs to be installed on the user's device. Starting from Android 14 (Upside Down Cake), Health Connect is part of the Android Framework. Read more [here](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#step-1).
+- Health Connect API requires `minSdkVersion=26` (Android Oreo / 8.0).
+- If you are planning to release your app on Google Play, you will need to submit a [declaration form](https://docs.google.com/forms/d/1LFjbq1MOCZySpP5eIVkoyzXTanpcGTYQH26lKcrQUJo/viewform?edit_requested=true). Approval can take up to 7 days.
+- Approval does not grant you immediate access to Health Connect. A whitelist must propagate to the Health Connect servers, which take an additional 5-7 business days. The whitelist is updated every Monday according to Google Fit AHP support.
 
 ## Installation
 
-Install `react-native-health-connect` by running:
+To install react-native-health-connect, use the following command:
 
 ```bash
-yarn add react-native-health-connect@alpha
+yarn add react-native-health-connect
 ```
 
-Since this module is Android-only, you do not need to run `pod install`.
+For version 2 onwards, please add the following code into your `MainActivity.kt` within the `onCreate` method:
 
-**Note:**
-We are actively working to implement all records in the `alpha` tag. In the meantime, you can check our code to see which records have already been implemented by visiting [here](https://github.com/matinzd/react-native-health-connect/tree/main/android/src/main/java/dev/matinzd/healthconnect/records).
+```diff
+package com.healthconnectexample
+
++ import android.os.Bundle
+import com.facebook.react.ReactActivity
+import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
+import com.facebook.react.defaults.DefaultReactActivityDelegate
++ import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate
+
+class MainActivity : ReactActivity() {
+  /**
+   * Returns the name of the main component registered from JavaScript. This is used to schedule
+   * rendering of the component.
+   */
+  override fun getMainComponentName(): String = "HealthConnectExample"
+
++ override fun onCreate(savedInstanceState: Bundle?) {
++   super.onCreate(savedInstanceState)
++   // In order to handle permission contract results, we need to set the permission delegate.
++   HealthConnectPermissionDelegate.setPermissionDelegate(this)
++ }
+
+  /**
+   * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
+   * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
+   */
+  override fun createReactActivityDelegate(): ReactActivityDelegate =
+    DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+}
+
+```
+
+
+## Expo installation
+
+This package cannot be used in the [Expo Go](https://expo.io/client) app, but it can be used with custom managed apps.
+Just add the [config plugin](https://docs.expo.io/guides/config-plugins/) to the [`plugins`](https://docs.expo.io/versions/latest/config/app/#plugins) array of your `app.json` or `app.config.js`:
+
+First install the package with yarn, npm, or [`expo install`](https://docs.expo.io/workflow/expo-cli/#expo-install).
+
+```sh
+expo install react-native-health-connect
+```
+
+Then add the prebuild [config plugin](https://docs.expo.io/guides/config-plugins/) to the [`plugins`](https://docs.expo.io/versions/latest/config/app/#plugins) array of your `app.json` or `app.config.js`:
+
+```json
+{
+  "expo": {
+    "plugins": ["react-native-health-connect"]
+  }
+}
+```
+
+- Edit your app.json again and add this
+
+```json
+{
+  "expo": {
+    ...
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 26
+          },
+        }
+      ]
+    ]
+   ...
+  }
+}
+```
+
+Then rebuild the native app:
+
+- Run `expo prebuild`
+  - This will apply the config plugin using [prebuilding](https://expo.fyi/prebuilding).
+- Rebuild the app
+  - `yarn android` -- Build on Android.
+
+> If the project doesn't build correctly with `yarn android`, please file an issue and try setting the project up manually.
+
+Finally create a new EAS development build
+
+`eas build --profile development --platform android`
 
 ## Example
 

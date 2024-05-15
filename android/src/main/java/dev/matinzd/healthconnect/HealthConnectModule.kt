@@ -41,6 +41,11 @@ class HealthConnectModule internal constructor(context: ReactApplicationContext)
   }
 
   @ReactMethod
+  override fun openHealthConnectDataManagement(providerPackageName: String?) {
+    manager.openHealthConnectDataManagement(providerPackageName)
+  }
+
+  @ReactMethod
   override fun initialize(providerPackageName: String, promise: Promise) {
     return manager.initialize(providerPackageName, promise)
   }
@@ -72,6 +77,11 @@ class HealthConnectModule internal constructor(context: ReactApplicationContext)
   @ReactMethod
   override fun readRecords(recordType: String, options: ReadableMap, promise: Promise) {
     return manager.readRecords(recordType, options, promise)
+  }
+
+  @ReactMethod
+  override fun readRecord(recordType: String, recordId: String, promise: Promise) {
+    return manager.readRecord(recordType, recordId, promise)
   }
 
   @ReactMethod

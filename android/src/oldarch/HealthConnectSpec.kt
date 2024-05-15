@@ -15,11 +15,10 @@ abstract class HealthConnectSpec internal constructor(context: ReactApplicationC
   abstract fun openHealthConnectSettings();
 
   @ReactMethod
-  abstract fun requestPermission(
-    permissions: ReadableArray,
-    providerPackageName: String,
-    promise: Promise
-  );
+  abstract fun openHealthConnectDataManagement(providerPackageName: String?);
+
+  @ReactMethod
+  abstract fun requestPermission(permissions: ReadableArray, providerPackageName: String, promise: Promise);
 
   @ReactMethod
   abstract fun getGrantedPermissions(promise: Promise);
@@ -34,7 +33,13 @@ abstract class HealthConnectSpec internal constructor(context: ReactApplicationC
   abstract fun readRecords(recordType: String, options: ReadableMap, promise: Promise);
 
   @ReactMethod
+  abstract fun readRecord(recordType: String, recordId: String, promise: Promise);
+
+  @ReactMethod
   abstract fun aggregateRecord(record: ReadableMap, promise: Promise);
+
+  @ReactMethod
+  abstract fun deleteRecordsByUuids(recordType: String, recordIdsList: ReadableArray, clientRecordIdsList: ReadableArray, promise: Promise);
 
   @ReactMethod
   abstract fun deleteRecordsByUuids(

@@ -21,7 +21,36 @@ To access health data from the Health Connect app in your own app, you need to a
 </manifest>
 ```
 
-- Add the following highlighted code inside the activity tag as well:
+- Create `PermissionRationaleActivity.kt`
+
+```diff title="android/app/src/main/java/com/healthconnectexample/PermissionRationaleActivity.kt"
+package com.healthconnectexample
+
+import android.os.Bundle
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.appcompat.app.AppCompatActivity
+
+class PermissionsRationaleActivity: AppCompatActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    val webView = WebView(this)
+    webView.webViewClient = object : WebViewClient() {
+      override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+        return false
+      }
+    }
+
+    webView.loadUrl("https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started")
+
+    setContentView(webView)
+  }
+}
+```
+
+- Add the following highlighted code inside the application tag as well:
 
 ```diff title="android/src/main/AndroidManifest.xml"
     <activity
@@ -35,12 +64,55 @@ To access health data from the Health Connect app in your own app, you need to a
           <action android:name="android.intent.action.MAIN" />
           <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
-      // highlight-start
-+     <intent-filter>
-+       <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
-+     </intent-filter>
-      // highlight-end
     </activity>
+    // highlight-start
+    <!-- For supported versions through Android 13, create an activity to show the rationale
+           of Health Connect permissions once users click the privacy policy link. -->
+    <activity
+      android:name=".PermissionsRationaleActivity"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+      </intent-filter>
+    </activity>
+
+    <!-- For versions starting Android 14, create an activity alias to show the rationale
+         of Health Connect permissions once users click the privacy policy link. -->
+    <activity-alias
+      android:name="ViewPermissionUsageActivity"
+      android:exported="true"
+      android:targetActivity=".PermissionsRationaleActivity"
+      android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+        <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+      </intent-filter>
+    </activity-alias>
+    // highlight-end
+```
+
+
+## Setting up permissions in Expo
+
+You will need to use [EAS Build](https://docs.expo.dev/eas/) and [Config plugins](https://docs.expo.dev/config-plugins/introduction/) in your project.
+
+- Edit `app.json` and add the permissions you need.
+
+```json
+{
+  "expo": {
+    ...
+    "android": {
+      ...
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.WRITE_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+      ]
+    },
+   ...
+  }
+}
 ```
 
 ## Complete list of permissions
@@ -75,7 +147,6 @@ To access health data from the Health Connect app in your own app, you need to a
 | RestingHeartRate       | android.permission.health.READ_RESTING_HEART_RATE     | android.permission.health.WRITE_RESTING_HEART_RATE     |
 | SexualActivity         | android.permission.health.READ_SEXUAL_ACTIVITY        | android.permission.health.WRITE_SEXUAL_ACTIVITY        |
 | SleepSession           | android.permission.health.READ_SLEEP                  | android.permission.health.WRITE_SLEEP                  |
-| SleepStage             | android.permission.health.READ_SLEEP                  | android.permission.health.WRITE_SLEEP                  |
 | Speed                  | android.permission.health.READ_SPEED                  | android.permission.health.WRITE_SPEED                  |
 | StepsCadence           | android.permission.health.READ_STEPS                  | android.permission.health.WRITE_STEPS                  |
 | Steps                  | android.permission.health.READ_STEPS                  | android.permission.health.WRITE_STEPS                  |
@@ -83,5 +154,6 @@ To access health data from the Health Connect app in your own app, you need to a
 | Vo2Max                 | android.permission.health.READ_VO2_MAX                | android.permission.health.WRITE_VO2_MAX                |
 | Weight                 | android.permission.health.READ_WEIGHT                 | android.permission.health.WRITE_WEIGHT                 |
 | WheelchairPushes       | android.permission.health.READ_WHEELCHAIR_PUSHES      | android.permission.health.WRITE_WHEELCHAIR_PUSHES      |
+| WriteExerciseRoute       | android.permission.health.WRITE_EXERCISE_ROUTE      | N/A      |
 
 You can read more about data types and permissions [here](https://developer.android.com/guide/health-and-fitness/health-connect/data-and-data-types/data-types).
