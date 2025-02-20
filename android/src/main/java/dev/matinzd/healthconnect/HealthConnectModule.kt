@@ -53,11 +53,19 @@ class HealthConnectModule internal constructor(context: ReactApplicationContext)
   @ReactMethod
   override fun requestPermission(
     permissions: ReadableArray,
-    providerPackageName: String,
     promise: Promise
   ) {
-    return manager.requestPermission(permissions, providerPackageName, promise)
+    return manager.requestPermission(permissions, promise)
   }
+
+  @ReactMethod
+  override fun requestExerciseRoute(
+    recordId: String,
+    promise: Promise
+  ) {
+    return manager.requestExerciseRoute(recordId, promise)
+  }
+
 
   @ReactMethod
   override fun getGrantedPermissions(promise: Promise) {
@@ -87,6 +95,21 @@ class HealthConnectModule internal constructor(context: ReactApplicationContext)
   @ReactMethod
   override fun aggregateRecord(record: ReadableMap, promise: Promise) {
     return manager.aggregateRecord(record, promise)
+  }
+
+  @ReactMethod
+  override fun aggregateGroupByDuration(record: ReadableMap, promise: Promise) {
+    return manager.aggregateGroupByDuration(record, promise)
+  }
+
+  @ReactMethod
+  override fun aggregateGroupByPeriod(record: ReadableMap, promise: Promise) {
+    return manager.aggregateGroupByPeriod(record, promise)
+  }
+
+  @ReactMethod
+  override fun getChanges(options: ReadableMap, promise: Promise) {
+    return manager.getChanges(options, promise)
   }
 
   @ReactMethod

@@ -1,8 +1,12 @@
 package dev.matinzd.healthconnect.records
 
 import androidx.health.connect.client.aggregate.AggregationResult
+import androidx.health.connect.client.aggregate.AggregationResultGroupedByPeriod
+import androidx.health.connect.client.aggregate.AggregationResultGroupedByDuration
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.response.InsertRecordsResponse
 import androidx.health.connect.client.response.ReadRecordResponse
@@ -13,6 +17,8 @@ import com.facebook.react.bridge.WritableNativeArray
 import com.facebook.react.bridge.WritableNativeMap
 import dev.matinzd.healthconnect.utils.InvalidRecordType
 import dev.matinzd.healthconnect.utils.convertReactRequestOptionsFromJS
+import dev.matinzd.healthconnect.utils.healthConnectClassToReactClassMap
+import dev.matinzd.healthconnect.utils.reactClassToReactTypeMap
 import dev.matinzd.healthconnect.utils.reactRecordTypeToClassMap
 import dev.matinzd.healthconnect.utils.reactRecordTypeToReactClassMap
 import kotlin.reflect.KClass
@@ -25,6 +31,15 @@ class ReactHealthRecord {
       }
 
       val reactClass = reactRecordTypeToReactClassMap[recordType]
+      return reactClass?.newInstance() as ReactHealthRecordImpl<T>
+    }
+
+    private fun <T : Record> createReactHealthRecordInstance(recordClass: Class<out Record>): ReactHealthRecordImpl<T> {
+      if (!healthConnectClassToReactClassMap.containsKey(recordClass)) {
+        throw InvalidRecordType()
+      }
+
+      val reactClass = healthConnectClassToReactClassMap[recordClass]
       return reactClass?.newInstance() as ReactHealthRecordImpl<T>
     }
 
@@ -60,21 +75,48 @@ class ReactHealthRecord {
       return recordClass.getAggregateRequest(reactRequest)
     }
 
+    fun getAggregateGroupByPeriodRequest(recordType: String, reactRequest: ReadableMap): AggregateGroupByPeriodRequest {
+      val recordClass = createReactHealthRecordInstance<Record>(recordType)
+
+      return recordClass.getAggregateGroupByPeriodRequest(reactRequest)
+    }
+
+    fun getAggregateGroupByDurationRequest(recordType: String, reactRequest: ReadableMap): AggregateGroupByDurationRequest {
+      val recordClass = createReactHealthRecordInstance<Record>(recordType)
+
+      return recordClass.getAggregateGroupByDurationRequest(reactRequest)
+    }
+
     fun parseAggregationResult(recordType: String, result: AggregationResult): WritableNativeMap {
       val recordClass = createReactHealthRecordInstance<Record>(recordType)
 
       return recordClass.parseAggregationResult(result)
     }
 
+    fun parseAggregationResultGroupedByDuration(recordType: String, result: List<AggregationResultGroupedByDuration>): WritableNativeArray {
+      val recordClass = createReactHealthRecordInstance<Record>(recordType)
+
+      return recordClass.parseAggregationResultGroupedByDuration(result)
+    }
+
+    fun parseAggregationResultGroupedByPeriod(recordType: String, result: List<AggregationResultGroupedByPeriod>): WritableNativeArray {
+      val recordClass = createReactHealthRecordInstance<Record>(recordType)
+
+      return recordClass.parseAggregationResultGroupedByPeriod(result)
+    }
+
     fun parseRecords(
       recordType: String,
       response: ReadRecordsResponse<out Record>
-    ): WritableNativeArray {
+    ): WritableNativeMap {
       val recordClass = createReactHealthRecordInstance<Record>(recordType)
-      return WritableNativeArray().apply {
-        for (record in response.records) {
-          pushMap(recordClass.parseRecord(record))
-        }
+      return WritableNativeMap().apply {
+        putString("pageToken", response.pageToken)
+        putArray("records", WritableNativeArray().apply {
+          for (record in response.records) {
+            pushMap(recordClass.parseRecord(record))
+          }
+        })
       }
     }
 
@@ -84,6 +126,15 @@ class ReactHealthRecord {
     ): WritableNativeMap {
       val recordClass = createReactHealthRecordInstance<Record>(recordType)
       return recordClass.parseRecord(response.record)
+    }
+
+    fun parseRecord(
+      record: Record
+    ): WritableNativeMap {
+      val reactRecordClass = createReactHealthRecordInstance<Record>(record.javaClass)
+      val reactRecord = reactRecordClass.parseRecord(record)
+      reactRecord.putString("recordType", reactClassToReactTypeMap[reactRecordClass.javaClass])
+      return reactRecord
     }
   }
 }

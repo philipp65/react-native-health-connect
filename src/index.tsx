@@ -3,14 +3,21 @@ import { HealthConnectError } from './errors';
 import type {
   AggregateRequest,
   AggregateResult,
+  AggregateGroupByDurationRequest,
+  AggregateGroupByPeriodRequest,
+  AggregationGroupResult,
   AggregateResultRecordType,
   HealthConnectRecord,
   Permission,
   ReadRecordsOptions,
   RecordResult,
   RecordType,
+  ReadRecordsResult,
+  GetChangesRequest,
+  GetChangesResults,
+  WriteExerciseRoutePermission,
 } from './types';
-import type { TimeRangeFilter } from './types/base.types';
+import type { ExerciseRoute, TimeRangeFilter } from './types/base.types';
 
 const LINKING_ERROR =
   `The package 'react-native-health-connect' doesn't seem to be linked. Make sure: \n\n` +
@@ -91,24 +98,27 @@ export function openHealthConnectDataManagement(
  * @returns granted permissions
  */
 export function requestPermission(
-  permissions: Permission[],
-  providerPackageName = DEFAULT_PROVIDER_PACKAGE_NAME
+  permissions: (Permission | WriteExerciseRoutePermission)[]
 ): Promise<Permission[]> {
-  return HealthConnect.requestPermission(permissions, providerPackageName);
+  return HealthConnect.requestPermission(permissions);
+}
+
+export function requestExerciseRoute(recordId: string): Promise<ExerciseRoute> {
+  return HealthConnect.requestExerciseRoute(recordId);
 }
 
 export function getGrantedPermissions(): Promise<Permission[]> {
   return HealthConnect.getGrantedPermissions();
 }
 
-export function revokeAllPermissions(): void {
+export function revokeAllPermissions(): Promise<void> {
   return HealthConnect.revokeAllPermissions();
 }
 
 export function readRecords<T extends RecordType>(
   recordType: T,
   options: ReadRecordsOptions
-): Promise<RecordResult<T>[]> {
+): Promise<ReadRecordsResult<T>> {
   return HealthConnect.readRecords(recordType, options);
 }
 
@@ -147,6 +157,24 @@ export function aggregateRecord<T extends AggregateResultRecordType>(
   return HealthConnect.aggregateRecord(request);
 }
 
+export function aggregateGroupByDuration<T extends AggregateResultRecordType>(
+  request: AggregateGroupByDurationRequest<T>
+): Promise<AggregationGroupResult<T>[]> {
+  return HealthConnect.aggregateGroupByDuration(request);
+}
+
+export function aggregateGroupByPeriod<T extends AggregateResultRecordType>(
+  request: AggregateGroupByPeriodRequest<T>
+): Promise<AggregationGroupResult<T>[]> {
+  return HealthConnect.aggregateGroupByPeriod(request);
+}
+
+export function getChanges(
+  request: GetChangesRequest
+): Promise<GetChangesResults> {
+  return HealthConnect.getChanges(request);
+}
+
 export function deleteRecordsByUuids(
   recordType: RecordType,
   recordIdsList: string[],
@@ -175,3 +203,4 @@ export function cancelPeriodicBackgroundWorker(): Promise<void> {
 }
 
 export * from './constants';
+export * from './types';

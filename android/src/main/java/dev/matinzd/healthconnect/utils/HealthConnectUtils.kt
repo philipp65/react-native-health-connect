@@ -2,7 +2,9 @@ package dev.matinzd.healthconnect.utils
 
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.records.metadata.DataOrigin
+import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.request.ChangesTokenRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.*
@@ -12,6 +14,9 @@ import com.facebook.react.bridge.WritableNativeArray
 import com.facebook.react.bridge.WritableNativeMap
 import dev.matinzd.healthconnect.records.*
 import java.time.Instant
+import java.time.ZoneOffset
+import java.time.Duration
+import java.time.Period
 import kotlin.reflect.KClass
 
 fun <T : Record> convertReactRequestOptionsFromJS(
@@ -46,6 +51,14 @@ fun convertJsToDataOriginSet(readableArray: ReadableArray?): Set<DataOrigin> {
   return readableArray.toArrayList().mapNotNull { DataOrigin(it.toString()) }.toSet()
 }
 
+fun convertJsToRecordTypeSet(readableArray: ReadableArray?): Set<KClass<out Record>> {
+  if (readableArray == null) {
+    return emptySet()
+  }
+
+  return readableArray.toArrayList().mapNotNull { reactRecordTypeToClassMap[it.toString()] }.toSet()
+}
+
 fun ReadableArray.toMapList(): List<ReadableMap> {
   val list = mutableListOf<ReadableMap>()
   for (i in 0 until size()) {
@@ -64,6 +77,10 @@ fun ReadableMap.getSafeBoolean(key: String, default: Boolean): Boolean {
 
 fun ReadableMap.getSafeString(key: String, default: String): String {
   return if (this.hasKey(key)) this.getString(key) ?: default else default
+}
+
+fun ReadableMap.getSafeDouble(key: String, default: Double): Double {
+  return if (this.hasKey(key)) this.getDouble(key) else default
 }
 
 fun ReadableMap.getTimeRangeFilter(key: String? = null): TimeRangeFilter {
@@ -110,6 +127,28 @@ fun ReadableMap.getTimeRangeFilter(key: String? = null): TimeRangeFilter {
   }
 }
 
+fun convertMetadataFromJSMap(meta: ReadableMap?): Metadata {
+  if (meta == null) {
+    return Metadata()
+  }
+
+  return Metadata(
+    id = meta.getSafeString("id", ""),
+    clientRecordId = meta.getString("clientRecordId"),
+    clientRecordVersion = meta.getSafeDouble("clientRecordVersion", 0.0).toLong(),
+    dataOrigin = DataOrigin(meta.getSafeString("dataOrigin", "")),
+    lastModifiedTime = Instant.parse(meta.getSafeString("lastModifiedTime", Instant.now().toString())),
+    device = meta.getMap("device")?.let {
+      Device(
+        type = it.getSafeInt("type", Device.TYPE_UNKNOWN),
+        manufacturer = it.getString("manufacturer"),
+        model = it.getString("model"),
+      )
+    },
+    recordingMethod = meta.getSafeInt("recordingMethod", Metadata.RECORDING_METHOD_UNKNOWN)
+  )
+}
+
 fun convertMetadataToJSMap(meta: Metadata): WritableNativeMap {
   return WritableNativeMap().apply {
     putString("id", meta.id)
@@ -117,8 +156,20 @@ fun convertMetadataToJSMap(meta: Metadata): WritableNativeMap {
     putDouble("clientRecordVersion", meta.clientRecordVersion.toDouble())
     putString("dataOrigin", meta.dataOrigin.packageName)
     putString("lastModifiedTime", meta.lastModifiedTime.toString())
-    putInt("device", meta.device?.type ?: 0)
+    putMap("device", convertDeviceToJSMap(meta.device))
     putInt("recordingMethod", meta.recordingMethod)
+  }
+}
+
+fun convertDeviceToJSMap(device: Device?): WritableNativeMap? {
+  if (device == null) {
+    return null
+  }
+
+  return WritableNativeMap().apply {
+    putInt("type", device.type)
+    putString("manufacturer", device.manufacturer)
+    putString("model", device.model)
   }
 }
 
@@ -204,6 +255,49 @@ val reactRecordTypeToReactClassMap: Map<String, Class<out ReactHealthRecordImpl<
   "MenstruationPeriod" to ReactMenstruationPeriodRecord::class.java
 )
 
+val reactClassToReactTypeMap = reactRecordTypeToReactClassMap.entries.associateBy({ it.value }) { it.key }
+
+val healthConnectClassToReactClassMap = mapOf(
+  ActiveCaloriesBurnedRecord::class.java to ReactActiveCaloriesBurnedRecord::class.java,
+  BasalBodyTemperatureRecord::class.java to ReactBasalBodyTemperatureRecord::class.java,
+  BasalMetabolicRateRecord::class.java to ReactBasalMetabolicRateRecord::class.java,
+  BloodGlucoseRecord::class.java to ReactBloodGlucoseRecord::class.java,
+  BloodPressureRecord::class.java to ReactBloodPressureRecord::class.java,
+  BodyFatRecord::class.java to ReactBodyFatRecord::class.java,
+  BodyTemperatureRecord::class.java to ReactBodyTemperatureRecord::class.java,
+  BodyWaterMassRecord::class.java to ReactBodyWaterMassRecord::class.java,
+  BoneMassRecord::class.java to ReactBoneMassRecord::class.java,
+  CervicalMucusRecord::class.java to ReactCervicalMucusRecord::class.java,
+  CyclingPedalingCadenceRecord::class.java to ReactCyclingPedalingCadenceRecord::class.java,
+  DistanceRecord::class.java to ReactDistanceRecord::class.java,
+  ElevationGainedRecord::class.java to ReactElevationGainedRecord::class.java,
+  ExerciseSessionRecord::class.java to ReactExerciseSessionRecord::class.java,
+  FloorsClimbedRecord::class.java to ReactFloorsClimbedRecord::class.java,
+  HeartRateRecord::class.java to ReactHeartRateRecord::class.java,
+  HeartRateVariabilityRmssdRecord::class.java to ReactHeartRateVariabilityRmssdRecord::class.java,
+  HeightRecord::class.java to ReactHeightRecord::class.java,
+  HydrationRecord::class.java to ReactHydrationRecord::class.java,
+  LeanBodyMassRecord::class.java to ReactLeanBodyMassRecord::class.java,
+  MenstruationFlowRecord::class.java to ReactMenstruationFlowRecord::class.java,
+  NutritionRecord::class.java to ReactNutritionRecord::class.java,
+  OvulationTestRecord::class.java to ReactOvulationTestRecord::class.java,
+  OxygenSaturationRecord::class.java to ReactOxygenSaturationRecord::class.java,
+  PowerRecord::class.java to ReactPowerRecord::class.java,
+  RespiratoryRateRecord::class.java to ReactRespiratoryRateRecord::class.java,
+  RestingHeartRateRecord::class.java to ReactRestingHeartRateRecord::class.java,
+  SexualActivityRecord::class.java to ReactSexualActivityRecord::class.java,
+  SleepSessionRecord::class.java to ReactSleepSessionRecord::class.java,
+  SpeedRecord::class.java to ReactSpeedRecord::class.java,
+  StepsCadenceRecord::class.java to ReactStepsCadenceRecord::class.java,
+  StepsRecord::class.java to ReactStepsRecord::class.java,
+  TotalCaloriesBurnedRecord::class.java to ReactTotalCaloriesBurnedRecord::class.java,
+  Vo2MaxRecord::class.java to ReactVo2MaxRecord::class.java,
+  WeightRecord::class.java to ReactWeightRecord::class.java,
+  WheelchairPushesRecord::class.java to ReactWheelchairPushesRecord::class.java,
+  IntermenstrualBleedingRecord::class.java to ReactIntermenstrualBleedingRecord::class.java,
+  MenstruationPeriodRecord::class.java to ReactMenstruationPeriodRecord::class.java
+)
+
 fun massToJsMap(mass: Mass?): WritableNativeMap {
   return WritableNativeMap().apply {
     putDouble("inGrams", mass?.inGrams ?: 0.0)
@@ -255,6 +349,17 @@ fun lengthToJsMap(length: Length?): WritableNativeMap {
     putDouble("inMiles", length?.inMiles ?: 0.0)
     putDouble("inInches", length?.inInches ?: 0.0)
     putDouble("inFeet", length?.inFeet ?: 0.0)
+  }
+}
+
+fun zoneOffsetToJsMap(zoneOffset: ZoneOffset?): WritableNativeMap? {
+  if (zoneOffset == null) {
+    return null
+  }
+
+  return WritableNativeMap().apply {
+    putString("id", zoneOffset.id)
+    putInt("totalSeconds", zoneOffset.totalSeconds)
   }
 }
 
@@ -343,5 +448,41 @@ fun powerToJsMap(power: Power?): WritableNativeMap {
   return WritableNativeMap().apply {
     putDouble("inWatts", power?.inWatts ?: 0.0)
     putDouble("inKilocaloriesPerDay", power?.inKilocaloriesPerDay ?: 0.0)
+  }
+}
+
+fun convertChangesTokenRequestOptionsFromJS(options: ReadableMap): ChangesTokenRequest {
+  return ChangesTokenRequest(
+    recordTypes = convertJsToRecordTypeSet(options.getArray("recordTypes")),
+    dataOriginFilters = convertJsToDataOriginSet(options.getArray("dataOriginFilters")),
+  )
+}
+
+fun mapJsDurationToDuration(duration: ReadableMap?): Duration {
+  if (duration == null) {
+    return Duration.ofDays(0)
+  }
+  val length = duration.getInt("length").toLong()
+  return when (duration.getString("duration")) {
+    "MILLIS" -> Duration.ofMillis(length)
+    "SECONDS" -> Duration.ofSeconds(length)
+    "MINUTES" -> Duration.ofMinutes(length)
+    "HOURS" -> Duration.ofHours(length)
+    "DAYS" -> Duration.ofDays(length)
+    else -> Duration.ofDays(length)
+  }
+}
+
+fun mapJsPeriodToPeriod(period: ReadableMap?): Period {
+  if (period == null) {
+    return Period.ofDays(0)
+  }
+  val length = period.getInt("length")
+  return when (period.getString("period")) {
+    "DAYS" -> Period.ofDays(length)
+    "WEEKS" -> Period.ofWeeks(length)
+    "MONTHS" -> Period.ofMonths(length)
+    "YEARS" -> Period.ofYears(length)
+    else -> Period.ofDays(length)
   }
 }

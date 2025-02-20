@@ -1,30 +1,21 @@
+import type { Metadata } from './metadata.types';
+
 export interface BaseRecord {
   metadata?: Metadata;
 }
 
+export interface ZoneOffset {
+  id: string;
+  totalSeconds: number;
+}
+
 export interface InstantaneousRecord extends BaseRecord {
   time: string;
-  zoneOffset?: string;
 }
 
 export interface IntervalRecord extends BaseRecord {
   startTime: string;
-  startZoneOffset?: string;
   endTime: string;
-  endZoneOffset?: string;
-}
-
-export interface Metadata {
-  id: string;
-  // package name of the app that created the record
-  dataOrigin: string;
-  lastModifiedTime: string;
-  clientRecordId?: string;
-  clientRecordVersion: number;
-  // see: https://developer.android.com/reference/kotlin/androidx/health/connect/client/records/metadata/Device
-  device: number;
-  // Use RecordingType constant to compare
-  recordingMethod: number;
 }
 
 export type TimeRangeFilter =
@@ -41,6 +32,18 @@ export type TimeRangeFilter =
       operator: 'before';
       endTime: string;
     };
+
+// Duration is a fixed length of time in Java (daylight savings are ignored for DAYS)
+export interface DurationRangeSlicer {
+  duration: 'MILLIS' | 'SECONDS' | 'MINUTES' | 'HOURS' | 'DAYS';
+  length: number;
+}
+
+// Period is date-based amount of time in Java
+export interface PeriodRangeSlicer {
+  period: 'DAYS' | 'WEEKS' | 'MONTHS' | 'YEARS';
+  length: number;
+}
 
 export interface Energy {
   value: number;
@@ -204,6 +207,13 @@ export interface Location {
   altitude?: Length;
 }
 
+export enum ExerciseRouteResultType {
+  DATA,
+  NO_DATA,
+  CONSENT_REQUIRED,
+}
+
 export interface ExerciseRoute {
+  type?: ExerciseRouteResultType; // ReadRecord(s) will always populate this, write and readExerciseRoute will not
   route: Location[];
 }

@@ -1,14 +1,24 @@
 package dev.matinzd.healthconnect.records
 
 import androidx.health.connect.client.aggregate.AggregationResult
+import androidx.health.connect.client.aggregate.AggregationResultGroupedByDuration
+import androidx.health.connect.client.aggregate.AggregationResultGroupedByPeriod
 import androidx.health.connect.client.records.BodyTemperatureMeasurementLocation
 import androidx.health.connect.client.records.BodyTemperatureRecord
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.units.Temperature
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.WritableNativeArray
 import com.facebook.react.bridge.WritableNativeMap
-import dev.matinzd.healthconnect.utils.*
+import dev.matinzd.healthconnect.utils.AggregationNotSupported
+import dev.matinzd.healthconnect.utils.InvalidTemperature
+import dev.matinzd.healthconnect.utils.convertMetadataFromJSMap
+import dev.matinzd.healthconnect.utils.convertMetadataToJSMap
+import dev.matinzd.healthconnect.utils.getSafeInt
+import dev.matinzd.healthconnect.utils.toMapList
 import java.time.Instant
 
 class ReactBodyTemperatureRecord : ReactHealthRecordImpl<BodyTemperatureRecord> {
@@ -21,7 +31,8 @@ class ReactBodyTemperatureRecord : ReactHealthRecordImpl<BodyTemperatureRecord> 
         measurementLocation = it.getSafeInt(
           "measurementLocation",
           BodyTemperatureMeasurementLocation.MEASUREMENT_LOCATION_UNKNOWN
-        )
+        ),
+        metadata = convertMetadataFromJSMap(it.getMap("metadata"))
       )
     }
   }
@@ -39,7 +50,23 @@ class ReactBodyTemperatureRecord : ReactHealthRecordImpl<BodyTemperatureRecord> 
     throw AggregationNotSupported()
   }
 
+  override fun getAggregateGroupByDurationRequest(record: ReadableMap): AggregateGroupByDurationRequest {
+    throw AggregationNotSupported()
+  }
+
+  override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+    throw AggregationNotSupported()
+  }
+
   override fun parseAggregationResult(record: AggregationResult): WritableNativeMap {
+    throw AggregationNotSupported()
+  }
+
+  override fun parseAggregationResultGroupedByDuration(record: List<AggregationResultGroupedByDuration>): WritableNativeArray {
+    throw AggregationNotSupported()
+  }
+
+  override fun parseAggregationResultGroupedByPeriod(record: List<AggregationResultGroupedByPeriod>): WritableNativeArray {
     throw AggregationNotSupported()
   }
 
