@@ -55,4 +55,10 @@ abstract class HealthConnectSpec internal constructor(context: ReactApplicationC
 
   @ReactMethod
   abstract fun deleteRecordsByTimeRange(recordType: String, timeRangeFilter: ReadableMap, promise: Promise);
+
+  @ReactMethod
+  abstract fun startPeriodicBackgroundWorker(promise: Promise);
+
+  @ReactMethod
+  abstract fun cancelPeriodicBackgroundWorker(promise: Promise);
 }

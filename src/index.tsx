@@ -194,5 +194,13 @@ export function deleteRecordsByTimeRange(
   return HealthConnect.deleteRecordsByTimeRange(recordType, timeRangeFilter);
 }
 
+export function startPeriodicBackgroundWorker(): Promise<void> {
+  return HealthConnect.startPeriodicBackgroundWorker();
+}
+
+export function cancelPeriodicBackgroundWorker(): Promise<void> {
+  return HealthConnect.cancelPeriodicBackgroundWorker();
+}
+
 export * from './constants';
 export * from './types';
