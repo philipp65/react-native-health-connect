@@ -1,7 +1,11 @@
 package dev.matinzd.healthconnect.records
 
 import androidx.health.connect.client.aggregate.AggregationResult
+import androidx.health.connect.client.aggregate.AggregationResultGroupedByDuration
+import androidx.health.connect.client.aggregate.AggregationResultGroupedByPeriod
 import androidx.health.connect.client.records.SleepSessionRecord
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
@@ -11,6 +15,8 @@ import dev.matinzd.healthconnect.utils.*
 import java.time.Instant
 
 class ReactSleepSessionRecord : ReactHealthRecordImpl<SleepSessionRecord> {
+  private val aggregateMetrics = setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL)
+
   override fun parseWriteRecord(records: ReadableArray): List<SleepSessionRecord> {
     return records.toMapList().map { map ->
       SleepSessionRecord(
@@ -27,6 +33,7 @@ class ReactSleepSessionRecord : ReactHealthRecordImpl<SleepSessionRecord> {
         endZoneOffset = null,
         title = map.getString("title"),
         notes = map.getString("description"),
+        metadata = convertMetadataFromJSMap(map.getMap("metadata"))
       )
     }
   }
@@ -52,10 +59,26 @@ class ReactSleepSessionRecord : ReactHealthRecordImpl<SleepSessionRecord> {
 
   override fun getAggregateRequest(record: ReadableMap): AggregateRequest {
     return AggregateRequest(
-      metrics = setOf(
-        SleepSessionRecord.SLEEP_DURATION_TOTAL
-      ),
+      metrics = aggregateMetrics,
       timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
+      dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+    )
+  }
+
+  override fun getAggregateGroupByDurationRequest(record: ReadableMap): AggregateGroupByDurationRequest {
+    return AggregateGroupByDurationRequest(
+      metrics = aggregateMetrics,
+      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
+      timeRangeSlicer = mapJsDurationToDuration(record.getMap("timeRangeSlicer")),
+      dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+    )
+  }
+
+  override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+    return AggregateGroupByPeriodRequest(
+      metrics = aggregateMetrics,
+      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
+      timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
     )
   }
@@ -67,6 +90,33 @@ class ReactSleepSessionRecord : ReactHealthRecordImpl<SleepSessionRecord> {
         record[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.seconds?.toDouble() ?: 0.0
       )
       putArray("dataOrigins", convertDataOriginsToJsArray(record.dataOrigins))
+    }
+  }
+
+  override fun parseAggregationResultGroupedByDuration(record: List<AggregationResultGroupedByDuration>): WritableNativeArray {
+    return WritableNativeArray().apply {
+      record.forEach {
+        val map = WritableNativeMap().apply {
+          putMap("result", parseAggregationResult(it.result))
+          putString("startTime", it.startTime.toString())
+          putString("endTime", it.endTime.toString())
+          putString("zoneOffset", it.zoneOffset.toString())
+        }
+        pushMap(map)
+      }
+    }
+  }
+
+  override fun parseAggregationResultGroupedByPeriod(record: List<AggregationResultGroupedByPeriod>): WritableNativeArray {
+    return WritableNativeArray().apply {
+      record.forEach {
+        val map = WritableNativeMap().apply {
+          putMap("result", parseAggregationResult(it.result))
+          putString("startTime", it.startTime.toString())
+          putString("endTime", it.endTime.toString())
+        }
+        pushMap(map)
+      }
     }
   }
 }

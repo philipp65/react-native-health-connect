@@ -5,6 +5,8 @@ import type {
   PowerResult,
   PressureResult,
   TimeRangeFilter,
+  DurationRangeSlicer,
+  PeriodRangeSlicer,
   VelocityResult,
   VolumeResult,
 } from './base.types';
@@ -175,6 +177,11 @@ interface PowerAggregateResult extends BaseAggregate {
   POWER_MAX: PowerResult;
 }
 
+interface ElevationGainedAggregateResult extends BaseAggregate {
+  recordType: 'ElevationGained';
+  ELEVATION_GAINED_TOTAL: LengthResult;
+}
+
 export type AggregateRecordResult =
   | ActiveCaloriesBurnedAggregateResult
   | BasalMetabolicRateAggregateResult
@@ -195,17 +202,42 @@ export type AggregateRecordResult =
   | WheelchairPushesAggregateResult
   | StepsCadenceAggregateResult
   | TotalCaloriesBurnedAggregateResult
-  | PowerAggregateResult;
+  | PowerAggregateResult
+  | ElevationGainedAggregateResult;
 
 export type AggregateResultRecordType = AggregateRecordResult['recordType'];
+
+export interface AggregateRequest<T extends AggregateResultRecordType> {
+  recordType: T;
+  timeRangeFilter: TimeRangeFilter;
+  dataOriginFilter?: string[];
+}
 
 export type AggregateResult<T extends AggregateResultRecordType> = Omit<
   Extract<AggregateRecordResult, { recordType: T }>,
   'recordType'
 >;
 
-export interface AggregateRequest<T extends AggregateResultRecordType> {
+export interface AggregateGroupByDurationRequest<
+  T extends AggregateResultRecordType
+> {
   recordType: T;
   timeRangeFilter: TimeRangeFilter;
+  timeRangeSlicer: DurationRangeSlicer;
   dataOriginFilter?: string[];
+}
+
+export interface AggregateGroupByPeriodRequest<
+  T extends AggregateResultRecordType
+> {
+  recordType: T;
+  timeRangeFilter: TimeRangeFilter;
+  timeRangeSlicer: PeriodRangeSlicer;
+  dataOriginFilter?: string[];
+}
+
+export interface AggregationGroupResult<T extends AggregateResultRecordType> {
+  result: AggregateResult<T>;
+  startTime: string;
+  endTime: string;
 }

@@ -3,7 +3,7 @@ import type {
   IntervalRecord,
   LengthResult,
   MassResult,
-  PowerResult,
+  PowerSampleResult,
   PressureResult,
   SpeedSampleResult,
   VolumeResult,
@@ -274,9 +274,9 @@ interface TotalCaloriesBurnedRecordResult
 interface OxygenSaturationRecordResult extends OxygenSaturationRecord {}
 
 interface PowerRecordResult
-  extends Replace<PowerRecord, 'samples', PowerResult[]> {}
+  extends Replace<PowerRecord, 'samples', PowerSampleResult[]> {}
 
-type HealthConnectRecordResult =
+export type HealthConnectRecordResult =
   | ActiveCaloriesBurnedRecordResult
   | BasalBodyTemperatureRecordResult
   | BasalMetabolicRateRecordResult
@@ -321,3 +321,8 @@ export type RecordResult<T extends RecordType> = Omit<
   Extract<HealthConnectRecordResult, { recordType: T }>,
   'recordType'
 >;
+
+export type ReadRecordsResult<T extends RecordType> = {
+  records: RecordResult<T>[];
+  pageToken?: string;
+};

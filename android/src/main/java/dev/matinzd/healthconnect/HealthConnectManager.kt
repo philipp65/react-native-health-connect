@@ -2,14 +2,21 @@ package dev.matinzd.healthconnect
 
 import android.content.Intent
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.changes.DeletionChange
+import androidx.health.connect.client.changes.UpsertionChange
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.WritableNativeArray
+import com.facebook.react.bridge.WritableNativeMap
 import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate
 import dev.matinzd.healthconnect.permissions.PermissionUtils
+import dev.matinzd.healthconnect.records.ReactExerciseSessionRecord
 import dev.matinzd.healthconnect.records.ReactHealthRecord
 import dev.matinzd.healthconnect.utils.ClientNotInitialized
+import dev.matinzd.healthconnect.utils.ExerciseRouteAccessDenied
+import dev.matinzd.healthconnect.utils.convertChangesTokenRequestOptionsFromJS
 import dev.matinzd.healthconnect.utils.getTimeRangeFilter
 import dev.matinzd.healthconnect.utils.reactRecordTypeToClassMap
 import dev.matinzd.healthconnect.utils.rejectWithException
@@ -57,12 +64,29 @@ class HealthConnectManager(private val applicationContext: ReactApplicationConte
   }
 
   fun requestPermission(
-    reactPermissions: ReadableArray, providerPackageName: String, promise: Promise
+    reactPermissions: ReadableArray,
+    promise: Promise
   ) {
     throwUnlessClientIsAvailable(promise) {
       coroutineScope.launch {
-        val granted = HealthConnectPermissionDelegate.launch(PermissionUtils.parsePermissions(reactPermissions))
+        val granted = HealthConnectPermissionDelegate.launchPermissionsDialog(PermissionUtils.parsePermissions(reactPermissions))
         promise.resolve(PermissionUtils.mapPermissionResult(granted))
+      }
+    }
+  }
+
+  fun requestExerciseRoute(
+    recordId: String, promise: Promise
+  ) {
+    throwUnlessClientIsAvailable(promise) {
+      coroutineScope.launch {
+        val exerciseRoute = HealthConnectPermissionDelegate.launchExerciseRouteAccessRequestDialog(recordId)
+        if (exerciseRoute != null) {
+          promise.resolve(ReactExerciseSessionRecord.parseExerciseRoute(exerciseRoute))
+        }
+        else{
+          promise.rejectWithException(ExerciseRouteAccessDenied())
+        }
       }
     }
   }
@@ -71,6 +95,7 @@ class HealthConnectManager(private val applicationContext: ReactApplicationConte
     throwUnlessClientIsAvailable(promise) {
       coroutineScope.launch {
         healthConnectClient.permissionController.revokeAllPermissions()
+        promise.resolve(true)
       }
     }
   }
@@ -143,6 +168,84 @@ class HealthConnectManager(private val applicationContext: ReactApplicationConte
     }
   }
 
+  fun aggregateGroupByDuration(record: ReadableMap, promise: Promise) {
+    throwUnlessClientIsAvailable(promise) {
+      coroutineScope.launch {
+        try {
+          val recordType = record.getString("recordType") ?: ""
+          val response = healthConnectClient.aggregateGroupByDuration(
+            ReactHealthRecord.getAggregateGroupByDurationRequest(
+              recordType, record
+            )
+          )
+          promise.resolve(ReactHealthRecord.parseAggregationResultGroupedByDuration(recordType, response))
+        } catch (e: Exception) {
+          promise.rejectWithException(e)
+        }
+      }
+    }
+  }
+
+  fun aggregateGroupByPeriod(record: ReadableMap, promise: Promise) {
+    throwUnlessClientIsAvailable(promise) {
+      coroutineScope.launch {
+        try {
+          val recordType = record.getString("recordType") ?: ""
+          val response = healthConnectClient.aggregateGroupByPeriod(
+            ReactHealthRecord.getAggregateGroupByPeriodRequest(
+              recordType, record
+            )
+          )
+          promise.resolve(ReactHealthRecord.parseAggregationResultGroupedByPeriod(recordType, response))
+        } catch (e: Exception) {
+          promise.rejectWithException(e)
+        }
+      }
+    }
+  }
+
+  fun getChanges(options: ReadableMap, promise: Promise) {
+    throwUnlessClientIsAvailable(promise) {
+      coroutineScope.launch {
+        try {
+          val changesToken =
+            options.getString("changesToken") ?: healthConnectClient.getChangesToken(convertChangesTokenRequestOptionsFromJS(options))
+          val changesResponse = healthConnectClient.getChanges(changesToken)
+
+          promise.resolve(WritableNativeMap().apply {
+            val upsertionChanges = WritableNativeArray()
+            val deletionChanges = WritableNativeArray()
+
+            for (change in changesResponse.changes) {
+              when (change) {
+                is UpsertionChange -> {
+                  upsertionChanges.pushMap(WritableNativeMap().apply {
+                    val record = ReactHealthRecord.parseRecord(change.record)
+                    putMap("record", record)
+                  })
+                }
+
+                is DeletionChange -> {
+                  deletionChanges.pushMap(WritableNativeMap().apply {
+                    putString("recordId", change.recordId)
+                  })
+                }
+              }
+            }
+
+            putArray("upsertionChanges", upsertionChanges)
+            putArray("deletionChanges", deletionChanges)
+            putString("nextChangesToken", changesResponse.nextChangesToken)
+            putBoolean("hasMore", changesResponse.hasMore)
+            putBoolean("changesTokenExpired", changesResponse.changesTokenExpired)
+          })
+        } catch (e: Exception) {
+          promise.rejectWithException(e)
+        }
+      }
+    }
+  }
+
   fun deleteRecordsByUuids(
     recordType: String,
     recordIdsList: ReadableArray,
@@ -153,12 +256,16 @@ class HealthConnectManager(private val applicationContext: ReactApplicationConte
       coroutineScope.launch {
         val record = reactRecordTypeToClassMap[recordType]
         if (record != null) {
-          healthConnectClient.deleteRecords(
-            recordType = record,
-            recordIdsList = recordIdsList.toArrayList().mapNotNull { it.toString() }.toList(),
-            clientRecordIdsList = if (clientRecordIdsList.size() > 0) clientRecordIdsList.toArrayList()
-              .mapNotNull { it.toString() }.toList() else emptyList()
-          )
+          try {
+            healthConnectClient.deleteRecords(
+              recordType = record,
+              recordIdsList = recordIdsList.toArrayList().mapNotNull { it.toString() }.toList(),
+              clientRecordIdsList = clientRecordIdsList.toArrayList().mapNotNull { it.toString() }.toList()
+            )
+            promise.resolve(true)
+          } catch (e: Exception) {
+            promise.rejectWithException(e)
+          }
         }
       }
     }
@@ -171,9 +278,14 @@ class HealthConnectManager(private val applicationContext: ReactApplicationConte
       coroutineScope.launch {
         val record = reactRecordTypeToClassMap[recordType]
         if (record != null) {
-          healthConnectClient.deleteRecords(
-            recordType = record, timeRangeFilter = timeRangeFilter.getTimeRangeFilter()
-          )
+          try {
+            healthConnectClient.deleteRecords(
+              recordType = record, timeRangeFilter = timeRangeFilter.getTimeRangeFilter()
+            )
+            promise.resolve(true)
+          } catch (e: Exception) {
+            promise.rejectWithException(e)
+          }
         }
       }
     }

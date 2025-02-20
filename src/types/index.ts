@@ -5,6 +5,13 @@ export interface Permission {
   recordType: RecordType;
 }
 
+export interface WriteExerciseRoutePermission {
+  accessType: 'write';
+  recordType: 'ExerciseRoute';
+}
+
 export * from './records.types';
 export * from './results.types';
 export * from './aggregate.types';
+export * from './changes.types';
+export * from './metadata.types';
